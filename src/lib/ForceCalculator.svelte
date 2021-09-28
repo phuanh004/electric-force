@@ -3,19 +3,29 @@ import { Decimal } from "decimal.js";
 
 const COORDINATES_SYSTEM_MAX_LENGTH = 10;
 const SCALE: number = 40;
-const FORCE_SCALE: number = 15000000 * 100; // (2 * 100)
-// let forceScale = 0;
-
-let inputQ1: number = 1;
-let inputQ2: number = 3;
-let inputQ3: number = -1;
+let forceScale = 0; // Scale force base on log 2
 
 let q1: Charge, q2: Charge, q3: Charge; // 3 Charges
-$: F1on2 = Number(
-  forceMagnitude(q1, q2, distanceOfTwoPointCharge(q1, q2)).toString()
-).toLocaleString();
 
-// let inputLocationQ1: number =
+$: ForcesDraw = {
+  F1on2: {
+    magnitude: Number(force(q1, q2).F1on2.magnitude).toLocaleString(),
+    p1: {},
+  },
+};
+
+const drawForce = (q1: Charge, q2: Charge) => {
+  return {
+    F1on2: {
+      magnitude: Number(force(q1, q2).F1on2.magnitude).toLocaleString(),
+      color: "red",
+      p1: {},
+    },
+  };
+};
+
+$: F1on2 = Number(force(q1, q2).F1on2.magnitude).toLocaleString();
+$: F2on1 = Number(force(q1, q2).F2on1.magnitude).toLocaleString();
 
 type Point = {
   location: Coordinate;
@@ -76,8 +86,15 @@ const force = (
   const eq = linearEquation(q1, q2);
   const r12 = vectorOfTwoPoint(q1, q2).magnitude;
   const magnitude = forceMagnitude(q1, q2, r12).toNumber();
-  // const base = Decimal.log2(magnitude);
-  const magnitude_scaled = FORCE_SCALE / magnitude;
+  const base = Decimal.log2(magnitude);
+
+  forceScale =
+    forceScale !== 0 ? Decimal.log2(magnitude).toNumber() : forceScale;
+
+  const magnitude_scaled = Decimal.pow(
+    magnitude,
+    new Decimal(1).dividedBy(base)
+  ).toNumber();
 
   let F2on1_x1 = isPush(q1, q2)
     ? q1.location.x - magnitude_scaled
@@ -177,18 +194,21 @@ const vectorOfTwoPoint = (p1: Point, p2: Point): Vector => {
  *
  * @param input_value
  */
-const onInputSet = (input_value: string) => {
-  if (!input_value && !isDataValid(inputQ1, inputQ2, inputQ3)) {
-    error = "Charge cannot equal zero";
-    return;
+const onInputSet = (input_value: number) => {
+  if (input_value === -1) {
+    console.log("Nope");
+    return 0;
   }
 
+  return input_value;
+  // if (!input_value && !isDataValid(inputQ1, inputQ2, inputQ3)) {
+  //   error = "Charge cannot equal zero";
+  //   return;
+  // }
   // forceMagnitude = calculateForceMagnitude(inputQ1, inputQ2, inputQ3)
   //   .abs()
   //   .toString();
-
   // forceMagnitude = Number(forceMagnitude).toLocaleString();
-
   // console.log(forceMagnitude);
 };
 
@@ -235,25 +255,25 @@ const isPush = (q1: Charge, q2: Charge): boolean => {
 
 const initData = () => {
   q1 = {
-    value: 3,
+    value: 0.3,
     location: {
-      x: 1,
-      y: 4,
+      x: 3,
+      y: 8,
     },
   };
 
   q2 = {
-    value: -1,
+    value: -0.1,
     location: {
-      x: 4,
+      x: 8,
       y: 2,
     },
   };
 
   q3 = {
-    value: 2,
+    value: 0.2,
     location: {
-      x: 9,
+      x: 13,
       y: 3,
     },
   };
@@ -271,7 +291,7 @@ initData();
       type="number"
       placeholder="1"
       bind:value="{q1.value}"
-      on:input="{onInputSet(inputQ1)}" />
+      on:input="{onInputSet(q1.value)}" />
   </div>
 
   <div class="set_input_section">
@@ -294,14 +314,13 @@ initData();
   </div>
 
   <div class="set_input_section">
-    <label for="setB">Charge 2 (q2): </label>
+    <label for="charge2">Charge 2 (q2): </label>
     <input
-      id="setB"
-      name="setB"
+      id="charge2"
+      name="charge2"
       type="number"
       placeholder="1"
-      bind:value="{q2.value}"
-      on:input="{onInputSet(inputQ2)}" />
+      bind:value="{q2.value}" />
   </div>
 
   <div class="set_input_section">
@@ -330,8 +349,8 @@ initData();
       name="charge3"
       type="number"
       placeholder="-1"
-      bind:value="{q3.value}"
-      on:input="{onInputSet(inputQ3)}" />
+      bind:value="{q3.value}" />
+    <!-- on:input="{onInputSet(inputQ3)}" -->
   </div>
 
   <div class="set_input_section">
@@ -402,6 +421,116 @@ initData();
           stroke="black"
           stroke-width="5"></line>
 
+        <line
+          x1="{cartesianToSVG(
+            force(q1, q2).F2on1.p1.x,
+            force(q1, q2).F2on1.p1.y
+          ).x}"
+          y1="{cartesianToSVG(
+            force(q1, q2).F2on1.p1.x,
+            force(q1, q2).F2on1.p1.y
+          ).y}"
+          x2="{cartesianToSVG(
+            force(q1, q2).F2on1.p2.x,
+            force(q1, q2).F2on1.p2.y
+          ).x}"
+          y2="{cartesianToSVG(
+            force(q1, q2).F2on1.p2.x,
+            force(q1, q2).F2on1.p2.y
+          ).y}"
+          stroke="blue"
+          marker-color="blue"
+          marker-end="url(#arrow-head-blue)"
+          stroke-width="5"></line>
+
+        <line
+          x1="{cartesianToSVG(
+            force(q1, q2).F1on2.p1.x,
+            force(q1, q2).F1on2.p1.y
+          ).x}"
+          y1="{cartesianToSVG(
+            force(q1, q2).F1on2.p1.x,
+            force(q1, q2).F1on2.p1.y
+          ).y}"
+          x2="{cartesianToSVG(
+            force(q1, q2).F1on2.p2.x,
+            force(q1, q2).F1on2.p2.y
+          ).x}"
+          y2="{cartesianToSVG(
+            force(q1, q2).F1on2.p2.x,
+            force(q1, q2).F1on2.p2.y
+          ).y}"
+          stroke="blue"
+          marker-color="blue"
+          marker-end="url(#arrow-head-blue)"
+          stroke-width="5"></line>
+
+        <line
+          x1="{cartesianToSVG(
+            force(q1, q3).F2on1.p1.x,
+            force(q1, q3).F2on1.p1.y
+          ).x}"
+          y1="{cartesianToSVG(
+            force(q1, q3).F2on1.p1.x,
+            force(q1, q3).F2on1.p1.y
+          ).y}"
+          x2="{cartesianToSVG(
+            force(q1, q3).F2on1.p2.x,
+            force(q1, q3).F2on1.p2.y
+          ).x}"
+          y2="{cartesianToSVG(
+            force(q1, q3).F2on1.p2.x,
+            force(q1, q3).F2on1.p2.y
+          ).y}"
+          stroke="blue"
+          marker-color="blue"
+          marker-end="url(#arrow-head-blue)"
+          stroke-width="5"></line>
+
+        <line
+          x1="{cartesianToSVG(
+            force(q1, q3).F1on2.p1.x,
+            force(q1, q3).F1on2.p1.y
+          ).x}"
+          y1="{cartesianToSVG(
+            force(q1, q3).F1on2.p1.x,
+            force(q1, q3).F1on2.p1.y
+          ).y}"
+          x2="{cartesianToSVG(
+            force(q1, q3).F1on2.p2.x,
+            force(q1, q3).F1on2.p2.y
+          ).x}"
+          y2="{cartesianToSVG(
+            force(q1, q3).F1on2.p2.x,
+            force(q1, q3).F1on2.p2.y
+          ).y}"
+          stroke="blue"
+          marker-color="blue"
+          marker-end="url(#arrow-head-blue)"
+          stroke-width="5"></line>
+
+        <line
+          x1="{cartesianToSVG(
+            force(q2, q3).F1on2.p1.x,
+            force(q2, q3).F1on2.p1.y
+          ).x}"
+          y1="{cartesianToSVG(
+            force(q2, q3).F1on2.p1.x,
+            force(q2, q3).F1on2.p1.y
+          ).y}"
+          x2="{cartesianToSVG(
+            force(q2, q3).F1on2.p2.x,
+            force(q2, q3).F1on2.p2.y
+          ).x}"
+          y2="{cartesianToSVG(
+            force(q2, q3).F1on2.p2.x,
+            force(q2, q3).F1on2.p2.y
+          ).y}"
+          stroke="blue"
+          marker-color="blue"
+          marker-end="url(#arrow-head-blue)"
+          stroke-width="5"></line>
+
         <!-- Charges -->
         <circle
           cx="{cartesianToSVG(q1.location.x, q1.location.y).x}"
@@ -427,93 +556,7 @@ initData();
           fill="transparent"
           stroke-width="5"></circle>
 
-        <line
-          x1="{cartesianToSVG(
-            force(q1, q2).F2on1.p1.x,
-            force(q1, q2).F2on1.p1.y
-          ).x}"
-          y1="{cartesianToSVG(
-            force(q1, q2).F2on1.p1.x,
-            force(q1, q2).F2on1.p1.y
-          ).y}"
-          x2="{cartesianToSVG(
-            force(q1, q2).F2on1.p2.x,
-            force(q1, q2).F2on1.p2.y
-          ).x}"
-          y2="{cartesianToSVG(
-            force(q1, q2).F2on1.p2.x,
-            force(q1, q2).F2on1.p2.y
-          ).y}"
-          stroke="blue"
-          marker-color="blue"
-          marker-end="url(#arrow-head-blue)"
-          stroke-width="5"></line>
-
-        <line
-          x1="{cartesianToSVG(
-            force(q1, q2).F1on2.p1.x,
-            force(q1, q2).F1on2.p1.y
-          ).x}"
-          y1="{cartesianToSVG(
-            force(q1, q2).F1on2.p1.x,
-            force(q1, q2).F1on2.p1.y
-          ).y}"
-          x2="{cartesianToSVG(
-            force(q1, q2).F1on2.p2.x,
-            force(q1, q2).F1on2.p2.y
-          ).x}"
-          y2="{cartesianToSVG(
-            force(q1, q2).F1on2.p2.x,
-            force(q1, q2).F1on2.p2.y
-          ).y}"
-          stroke="blue"
-          marker-color="blue"
-          marker-end="url(#arrow-head-blue)"
-          stroke-width="5"></line>
-
-        <line
-          x1="{cartesianToSVG(
-            force(q1, q3).F2on1.p1.x,
-            force(q1, q3).F2on1.p1.y
-          ).x}"
-          y1="{cartesianToSVG(
-            force(q1, q3).F2on1.p1.x,
-            force(q1, q3).F2on1.p1.y
-          ).y}"
-          x2="{cartesianToSVG(
-            force(q1, q3).F2on1.p2.x,
-            force(q1, q3).F2on1.p2.y
-          ).x}"
-          y2="{cartesianToSVG(
-            force(q1, q3).F2on1.p2.x,
-            force(q1, q3).F2on1.p2.y
-          ).y}"
-          stroke="blue"
-          marker-color="blue"
-          marker-end="url(#arrow-head-blue)"
-          stroke-width="5"></line>
-
-        <line
-          x1="{cartesianToSVG(
-            force(q1, q3).F1on2.p1.x,
-            force(q1, q3).F1on2.p1.y
-          ).x}"
-          y1="{cartesianToSVG(
-            force(q1, q3).F1on2.p1.x,
-            force(q1, q3).F1on2.p1.y
-          ).y}"
-          x2="{cartesianToSVG(
-            force(q1, q3).F1on2.p2.x,
-            force(q1, q3).F1on2.p2.y
-          ).x}"
-          y2="{cartesianToSVG(
-            force(q1, q3).F1on2.p2.x,
-            force(q1, q3).F1on2.p2.y
-          ).y}"
-          stroke="blue"
-          marker-color="blue"
-          marker-end="url(#arrow-head-blue)"
-          stroke-width="5"></line>
+        <!-- End Charges -->
 
         <!-- <line
         x1="0"
