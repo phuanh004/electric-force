@@ -44,6 +44,7 @@ type Charge = Point & {
 type Vector = Line & {
   magnitude: number;
   magnitude_scaled?: number;
+  color?: string;
 };
 
 /**
@@ -61,7 +62,7 @@ type Coordinate = {
 
 // let forceMagnitude: string = "";
 
-let error = "";
+$: error = "";
 
 /**
  * Calculate force magnitude between 2 charges
@@ -109,6 +110,7 @@ const force = (
   let F2on1: Vector = {
     magnitude: magnitude,
     magnitude_scaled: magnitude_scaled,
+    color: q2.value > 0 ? "red" : "blue",
     p1: q1.location,
     p2: {
       x: F2on1_x1,
@@ -119,6 +121,7 @@ const force = (
   let F1on2: Vector = {
     magnitude: magnitude,
     magnitude_scaled: magnitude_scaled,
+    color: q1.value > 0 ? "red" : "blue",
     p1: q2.location,
     p2: {
       x: F1on2_x1,
@@ -126,11 +129,11 @@ const force = (
     },
   };
 
-  console.log({
-    F1on2,
-    F2on1,
-    eq,
-  });
+  // console.log({
+  //   F1on2,
+  //   F2on1,
+  //   eq,
+  // });
 
   return {
     F1on2: F1on2,
@@ -197,6 +200,8 @@ const vectorOfTwoPoint = (p1: Point, p2: Point): Vector => {
 const onInputSet = (input_value: number) => {
   if (input_value === -1) {
     console.log("Nope");
+    error = "Nope";
+
     return 0;
   }
 
@@ -222,12 +227,43 @@ const onInputSet = (input_value: number) => {
  * @param q2 charge 2
  * @param q3 charge 3
  */
-const isDataValid = (q1: number, q2: number, q3: number): boolean => {
-  if (q1 === 0 || q2 === 0 || q3 === 0) return false;
+// const isDataValid = (q1: number, q2: number, q3: number): boolean => {
+//   if (q1 === 0 || q2 === 0 || q3 === 0) return false;
 
-  // TODO: Check 2 charges positive and 1 charge negative
+//   // TODO: Check 2 charges positive and 1 charge negative
 
-  return q1 !== q2 && q2 !== q3 && q1 !== q3;
+//   return q1 !== q2 && q2 !== q3 && q1 !== q3;
+// };
+
+const isValidChargeSystem = (q1: Charge, q2: Charge, q3: Charge): boolean => {
+  if (q1.value !== q2.value && q2.value !== q3.value && q1 !== q3) {
+    return true;
+  } else {
+    error = "q1, q2, and q3 could not be the same";
+    return false;
+  }
+};
+const onInputSetCharge = (event: InputEvent) => {
+  if (!isValidChargeSystem(q1, q2, q3)) return;
+
+  const id: string = event.target?.id;
+  const charge: number = event.target?.value;
+
+  switch (id) {
+    case "charge1":
+      q1.value = charge;
+      break;
+    case "charge2":
+      q1.value = charge;
+      break;
+    case "charge3":
+      q3.value = charge;
+      break;
+  }
+};
+
+const colorChargeCSS = (q: Charge): string => {
+  return q.value > 0 ? "charge-red" : "charge-blue";
 };
 
 /**
@@ -240,14 +276,6 @@ function cartesianToSVG(x: number, y: number) {
     y: y * SCALE,
   };
 }
-
-const calculateVectorMagnitude = () => {};
-
-const calculateAngle = (q1: Charge, q2: Charge) => {
-  const dx = Math.abs(q1.location.x - q2.location.x);
-  const dy = Math.abs(q1.location.y - q2.location.y);
-  return Math.atan(dy / dx);
-};
 
 const isPush = (q1: Charge, q2: Charge): boolean => {
   return new Decimal(q1.value * q2.value).isPositive();
@@ -284,14 +312,15 @@ initData();
 
 <main>
   <div class="set_input_section">
-    <label for="setA">Charge 1 (q1): </label>
+    <label for="charge1">Charge 1 (q1): </label>
     <input
-      id="setA"
-      name="setA"
+      id="charge1"
+      name="charge1"
       type="number"
       placeholder="1"
-      bind:value="{q1.value}"
-      on:input="{onInputSet(q1.value)}" />
+      value="1"
+      on:input="{onInputSetCharge}" />
+    <!-- bind:value="{q1.value}" -->
   </div>
 
   <div class="set_input_section">
@@ -438,8 +467,7 @@ initData();
             force(q1, q2).F2on1.p2.x,
             force(q1, q2).F2on1.p2.y
           ).y}"
-          stroke="blue"
-          marker-color="blue"
+          class="vector {force(q1, q2).F2on1.color}"
           marker-end="url(#arrow-head-blue)"
           stroke-width="5"></line>
 
@@ -460,8 +488,7 @@ initData();
             force(q1, q2).F1on2.p2.x,
             force(q1, q2).F1on2.p2.y
           ).y}"
-          stroke="blue"
-          marker-color="blue"
+          class="vector {force(q1, q2).F1on2.color}"
           marker-end="url(#arrow-head-blue)"
           stroke-width="5"></line>
 
@@ -482,8 +509,7 @@ initData();
             force(q1, q3).F2on1.p2.x,
             force(q1, q3).F2on1.p2.y
           ).y}"
-          stroke="blue"
-          marker-color="blue"
+          class="vector {force(q1, q2).F1on2.color}"
           marker-end="url(#arrow-head-blue)"
           stroke-width="5"></line>
 
@@ -504,8 +530,7 @@ initData();
             force(q1, q3).F1on2.p2.x,
             force(q1, q3).F1on2.p2.y
           ).y}"
-          stroke="blue"
-          marker-color="blue"
+          class="vector {force(q1, q2).F1on2.color}"
           marker-end="url(#arrow-head-blue)"
           stroke-width="5"></line>
 
@@ -526,8 +551,28 @@ initData();
             force(q2, q3).F1on2.p2.x,
             force(q2, q3).F1on2.p2.y
           ).y}"
-          stroke="blue"
-          marker-color="blue"
+          class="vector {force(q2, q3).F1on2.color}"
+          marker-end="url(#arrow-head-blue)"
+          stroke-width="5"></line>
+
+        <line
+          x1="{cartesianToSVG(
+            force(q2, q3).F2on1.p1.x,
+            force(q2, q3).F2on1.p1.y
+          ).x}"
+          y1="{cartesianToSVG(
+            force(q2, q3).F2on1.p1.x,
+            force(q2, q3).F2on1.p1.y
+          ).y}"
+          x2="{cartesianToSVG(
+            force(q2, q3).F2on1.p2.x,
+            force(q2, q3).F2on1.p2.y
+          ).x}"
+          y2="{cartesianToSVG(
+            force(q2, q3).F2on1.p2.x,
+            force(q2, q3).F2on1.p2.y
+          ).y}"
+          class="vector {force(q2, q3).F2on1.color}"
           marker-end="url(#arrow-head-blue)"
           stroke-width="5"></line>
 
@@ -536,25 +581,19 @@ initData();
           cx="{cartesianToSVG(q1.location.x, q1.location.y).x}"
           cy="{cartesianToSVG(q1.location.x, q1.location.y).y}"
           r="{Math.abs(q1.value)}"
-          stroke="red"
-          fill="transparent"
-          stroke-width="5"></circle>
+          class="{colorChargeCSS(q1)}"></circle>
 
         <circle
           cx="{cartesianToSVG(q2.location.x, q2.location.y).x}"
           cy="{cartesianToSVG(q2.location.x, q2.location.y).y}"
           r="{Math.abs(q2.value)}"
-          stroke="blue"
-          fill="transparent"
-          stroke-width="5"></circle>
+          class="{colorChargeCSS(q2)}"></circle>
 
         <circle
           cx="{cartesianToSVG(q3.location.x, q3.location.y).x}"
           cy="{cartesianToSVG(q3.location.x, q3.location.y).y}"
           r="{Math.abs(q3.value)}"
-          stroke="red"
-          fill="transparent"
-          stroke-width="5"></circle>
+          class="{colorChargeCSS(q3)}"></circle>
 
         <!-- End Charges -->
 
@@ -574,5 +613,26 @@ initData();
 <style>
 main {
   @apply container mx-auto;
+}
+
+.charge-blue {
+  fill: blue;
+  stroke: blue;
+  stroke-width: 0.6em;
+  /* @apply fill-current text-blue-500; */
+}
+
+.charge-red {
+  fill: red;
+  stroke: red;
+  stroke-width: 0.6em;
+}
+
+.vector.blue {
+  stroke: blue;
+}
+
+.vector.red {
+  stroke: red;
 }
 </style>
