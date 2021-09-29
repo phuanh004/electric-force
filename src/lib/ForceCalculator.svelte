@@ -107,6 +107,12 @@ const force = (
     : q2.location.x - magnitude_scaled;
   let F1on2_x2 = eq.slope * F1on2_x1 + eq.y_int;
 
+  // TODO: scale magnitude
+  // dx = dy * cos(theta)
+
+  // dy = charge 2 abs(charge 2 y - charge 1 y)
+  // x = sqrt( magnitude * magnitude -  dy * dy)
+
   let F2on1: Vector = {
     magnitude: magnitude,
     magnitude_scaled: magnitude_scaled,
@@ -235,29 +241,46 @@ const onInputSet = (input_value: number) => {
 //   return q1 !== q2 && q2 !== q3 && q1 !== q3;
 // };
 
-const isValidChargeSystem = (q1: Charge, q2: Charge, q3: Charge): boolean => {
-  if (q1.value !== q2.value && q2.value !== q3.value && q1 !== q3) {
+const isValidChargeSystem = (
+  q1_charge: number,
+  q2: Charge,
+  q3: Charge
+): boolean => {
+  if (
+    q1_charge !== q2.value &&
+    q2.value !== q3.value &&
+    q1_charge !== q3.value
+  ) {
+    error == "";
     return true;
-  } else {
-    error = "q1, q2, and q3 could not be the same";
-    return false;
   }
+  error = "q1, q2, and q3 could not be the same";
+  return false;
 };
 const onInputSetCharge = (event: InputEvent) => {
-  if (!isValidChargeSystem(q1, q2, q3)) return;
-
   const id: string = event.target?.id;
-  const charge: number = event.target?.value;
+  const charge = new Decimal(event.target?.value);
+  if (!isValidChargeSystem(charge.toNumber(), q2, q3)) return;
 
   switch (id) {
     case "charge1":
-      q1.value = charge;
+      console.log({ charge, q1, q2, q3 });
+      q1.value =
+        charge.equals(q2.value) && charge.equals(q3.value)
+          ? charge.toNumber()
+          : q1.value;
       break;
     case "charge2":
-      q1.value = charge;
+      q2.value =
+        charge.equals(q1.value) && charge.equals(q3.value)
+          ? charge.toNumber()
+          : q2.value;
       break;
     case "charge3":
-      q3.value = charge;
+      q3.value =
+        charge.equals(q1.value) && charge.equals(q2.value)
+          ? charge.toNumber()
+          : q3.value;
       break;
   }
 };
