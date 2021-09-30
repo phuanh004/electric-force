@@ -7,25 +7,16 @@ let forceScale = 0; // Scale force base on log 2
 
 let q1: Charge, q2: Charge, q3: Charge; // 3 Charges
 
-$: ForcesDraw = {
-  F1on2: {
-    magnitude: Number(force(q1, q2).F1on2.magnitude).toLocaleString(),
-    p1: {},
-  },
-};
-
-const drawForce = (q1: Charge, q2: Charge) => {
-  return {
-    F1on2: {
-      magnitude: Number(force(q1, q2).F1on2.magnitude).toLocaleString(),
-      color: "red",
-      p1: {},
-    },
-  };
-};
+enum ChargeID {
+  Charge1 = "charge1",
+  Charge2 = "charge2",
+  Charge3 = "charge3",
+}
 
 $: F1on2 = Number(force(q1, q2).F1on2.magnitude).toLocaleString();
-$: F2on1 = Number(force(q1, q2).F2on1.magnitude).toLocaleString();
+$: F1on3 = Number(force(q1, q3).F1on2.magnitude).toLocaleString();
+$: F2on3 = Number(force(q2, q3).F1on2.magnitude).toLocaleString();
+$: error = "";
 
 type Point = {
   location: Coordinate;
@@ -38,7 +29,6 @@ type Line = {
 
 type Charge = Point & {
   value: number;
-  // location: Coordinate;
 };
 
 type Vector = Line & {
@@ -59,10 +49,6 @@ type Coordinate = {
   x: number;
   y: number;
 };
-
-// let forceMagnitude: string = "";
-
-$: error = "";
 
 /**
  * Calculate force magnitude between 2 charges
@@ -160,7 +146,7 @@ const distanceOfTwoPointCharge = (q1: Charge, q2: Charge): number => {
  * @see https://en.wikipedia.org/wiki/Coulomb_constant
  * @see https://en.wikipedia.org/wiki/Vacuum_permittivity
  *
- * @returns Coulomb constant
+ * @returns Coulomb constant (N/m^2)/(C^2)
  */
 const coulombConstant = (): Decimal => {
   return new Decimal(1)
@@ -200,30 +186,6 @@ const vectorOfTwoPoint = (p1: Point, p2: Point): Vector => {
 };
 
 /**
- *
- * @param input_value
- */
-const onInputSet = (input_value: number) => {
-  if (input_value === -1) {
-    console.log("Nope");
-    error = "Nope";
-
-    return 0;
-  }
-
-  return input_value;
-  // if (!input_value && !isDataValid(inputQ1, inputQ2, inputQ3)) {
-  //   error = "Charge cannot equal zero";
-  //   return;
-  // }
-  // forceMagnitude = calculateForceMagnitude(inputQ1, inputQ2, inputQ3)
-  //   .abs()
-  //   .toString();
-  // forceMagnitude = Number(forceMagnitude).toLocaleString();
-  // console.log(forceMagnitude);
-};
-
-/**
  * Check data is valid
  * q1, q2, q3 must be not equal to zero
  * q1 =/= q2 =/= q3
@@ -241,42 +203,56 @@ const onInputSet = (input_value: number) => {
 //   return q1 !== q2 && q2 !== q3 && q1 !== q3;
 // };
 
-const isValidChargeSystem = (
-  q1_charge: number,
-  q2: Charge,
-  q3: Charge
-): boolean => {
-  if (
-    q1_charge !== q2.value &&
-    q2.value !== q3.value &&
-    q1_charge !== q3.value
-  ) {
-    error == "";
-    return true;
+const isChargeEqualWithOthers = (id: string, value: number): boolean => {
+  const message = "q1, q2, and q3 could not be the same";
+
+  console.log({ id, value });
+
+  if (id === ChargeID.Charge1 && (value === q2.value || value === q3.value)) {
+    error = message;
+    return false;
   }
-  error = "q1, q2, and q3 could not be the same";
-  return false;
+
+  if (id === ChargeID.Charge2 && (value === q1.value || value === q3.value)) {
+    error = message;
+    return false;
+  }
+
+  if (id === ChargeID.Charge3 && (value === q1.value || value === q2.value)) {
+    error = message;
+    return false;
+  }
+
+  error = "";
+  return true;
 };
+
 const onInputSetCharge = (event: InputEvent) => {
-  const id: string = event.target?.id;
-  const charge = new Decimal(event.target?.value);
-  if (!isValidChargeSystem(charge.toNumber(), q2, q3)) return;
+  const formTarget = event.target;
+  const chargeInput = event.target?.value;
+
+  const id: string = formTarget?.id;
+  const charge: Decimal = chargeInput
+    ? new Decimal(chargeInput)
+    : new Decimal(0);
+
+  if (!isChargeEqualWithOthers(id, charge.toNumber())) return;
 
   switch (id) {
-    case "charge1":
-      console.log({ charge, q1, q2, q3 });
+    case ChargeID.Charge1:
       q1.value =
         charge.equals(q2.value) && charge.equals(q3.value)
-          ? charge.toNumber()
-          : q1.value;
+          ? q1.value
+          : charge.toNumber();
+
       break;
-    case "charge2":
+    case ChargeID.Charge2:
       q2.value =
         charge.equals(q1.value) && charge.equals(q3.value)
           ? charge.toNumber()
           : q2.value;
       break;
-    case "charge3":
+    case ChargeID.Charge3:
       q3.value =
         charge.equals(q1.value) && charge.equals(q2.value)
           ? charge.toNumber()
@@ -284,6 +260,10 @@ const onInputSetCharge = (event: InputEvent) => {
       break;
   }
 };
+
+// const isChargeEqualWithOthers = (id: string, val: number, o1: Charge, o2: Charge) :boolean {
+
+// }
 
 const colorChargeCSS = (q: Charge): string => {
   return q.value > 0 ? "charge-red" : "charge-blue";
@@ -335,15 +315,14 @@ initData();
 
 <main>
   <div class="set_input_section">
-    <label for="charge1">Charge 1 (q1): </label>
+    <label for="{ChargeID.Charge1}">Charge 1 (q1): </label>
     <input
-      id="charge1"
-      name="charge1"
+      id="{ChargeID.Charge1}"
+      name="{ChargeID.Charge1}"
       type="number"
-      placeholder="1"
-      value="1"
+      placeholder="0.2"
+      value="0.2"
       on:input="{onInputSetCharge}" />
-    <!-- bind:value="{q1.value}" -->
   </div>
 
   <div class="set_input_section">
@@ -368,11 +347,12 @@ initData();
   <div class="set_input_section">
     <label for="charge2">Charge 2 (q2): </label>
     <input
-      id="charge2"
-      name="charge2"
+      id="{ChargeID.Charge2}"
+      name="{ChargeID.Charge2}"
       type="number"
-      placeholder="1"
-      bind:value="{q2.value}" />
+      placeholder="-0.1"
+      value="-0.1"
+      on:input="{onInputSetCharge}" />
   </div>
 
   <div class="set_input_section">
@@ -397,12 +377,12 @@ initData();
   <div class="set_input_section">
     <label for="charge3">Charge 3 (q3): </label>
     <input
-      id="charge3"
-      name="charge3"
+      id="{ChargeID.Charge3}"
+      name="{ChargeID.Charge3}"
       type="number"
-      placeholder="-1"
-      bind:value="{q3.value}" />
-    <!-- on:input="{onInputSet(inputQ3)}" -->
+      placeholder="0.3"
+      value="0.3"
+      on:input="{onInputSetCharge}" />
   </div>
 
   <div class="set_input_section">
@@ -428,7 +408,9 @@ initData();
     </div>
 
     <div class="result">
-      |F12| = {F1on2}
+      <p>|F1on2| = |F2on1| = {F1on2}</p>
+      <p>|F1on3| = |F3on1| = {F1on3}</p>
+      <p>|F2on3| = |F3on2| = {F2on3}</p>
     </div>
 
     <div class="drawing">
@@ -445,7 +427,16 @@ initData();
             markerHeight="4"
             orient="auto"
             refY="2">
-            <path d="M0,0 L4,2 0,4"></path>
+            <path fill="blue" d="M0,0 L4,2 0,4"></path>
+          </marker>
+
+          <marker
+            id="arrow-head-red"
+            markerWidth="4"
+            markerHeight="4"
+            orient="auto"
+            refY="2">
+            <path fill="red" d="M0,0 L4,2 0,4"></path>
           </marker>
         </defs>
 
@@ -473,6 +464,7 @@ initData();
           stroke="black"
           stroke-width="5"></line>
 
+        <!-- Forces -->
         <line
           x1="{cartesianToSVG(
             force(q1, q2).F2on1.p1.x,
@@ -491,7 +483,7 @@ initData();
             force(q1, q2).F2on1.p2.y
           ).y}"
           class="vector {force(q1, q2).F2on1.color}"
-          marker-end="url(#arrow-head-blue)"
+          marker-end="url(#arrow-head-{force(q1, q2).F2on1.color})"
           stroke-width="5"></line>
 
         <line
@@ -512,7 +504,7 @@ initData();
             force(q1, q2).F1on2.p2.y
           ).y}"
           class="vector {force(q1, q2).F1on2.color}"
-          marker-end="url(#arrow-head-blue)"
+          marker-end="url(#arrow-head-{force(q1, q2).F1on2.color})"
           stroke-width="5"></line>
 
         <line
@@ -532,8 +524,8 @@ initData();
             force(q1, q3).F2on1.p2.x,
             force(q1, q3).F2on1.p2.y
           ).y}"
-          class="vector {force(q1, q2).F1on2.color}"
-          marker-end="url(#arrow-head-blue)"
+          class="vector {force(q1, q3).F2on1.color}"
+          marker-end="url(#arrow-head-{force(q1, q3).F2on1.color})"
           stroke-width="5"></line>
 
         <line
@@ -553,8 +545,8 @@ initData();
             force(q1, q3).F1on2.p2.x,
             force(q1, q3).F1on2.p2.y
           ).y}"
-          class="vector {force(q1, q2).F1on2.color}"
-          marker-end="url(#arrow-head-blue)"
+          class="vector {force(q1, q3).F1on2.color}"
+          marker-end="url(#arrow-head-{force(q1, q3).F1on2.color})"
           stroke-width="5"></line>
 
         <line
@@ -575,7 +567,7 @@ initData();
             force(q2, q3).F1on2.p2.y
           ).y}"
           class="vector {force(q2, q3).F1on2.color}"
-          marker-end="url(#arrow-head-blue)"
+          marker-end="url(#arrow-head-{force(q2, q3).F1on2.color})"
           stroke-width="5"></line>
 
         <line
@@ -596,8 +588,10 @@ initData();
             force(q2, q3).F2on1.p2.y
           ).y}"
           class="vector {force(q2, q3).F2on1.color}"
-          marker-end="url(#arrow-head-blue)"
+          marker-end="url(#arrow-head-{force(q2, q3).F2on1.color})"
           stroke-width="5"></line>
+
+        <!-- End Forces -->
 
         <!-- Charges -->
         <circle
@@ -619,15 +613,6 @@ initData();
           class="{colorChargeCSS(q3)}"></circle>
 
         <!-- End Charges -->
-
-        <!-- <line
-        x1="0"
-        y1="0"
-        x2="50"
-        y2="50"
-        stroke="#000"
-        stroke-width="6"
-        marker-end="url(#arrowhead)"></line> -->
       </svg>
     </div>
   </div>
