@@ -93,12 +93,6 @@ const force = (
     : q2.location.x - magnitude_scaled / Math.sqrt(eq.slope * eq.slope + 1);
   let F1on2_x2 = eq.slope * F1on2_x1 + eq.y_int;
 
-  // TODO: scale magnitude
-  // dx = dy * cos(theta)
-
-  // dy = charge 2 abs(charge 2 y - charge 1 y)
-  // x = sqrt( magnitude * magnitude -  dy * dy)
-
   let F2on1: Vector = {
     magnitude: magnitude,
     magnitude_scaled: magnitude_scaled,
@@ -210,12 +204,12 @@ const isChargeEqualWithOthers = (id: string, value: number): boolean => {
 
   if (id === ChargeID.Charge1 && (value === q2.value || value === q3.value)) {
     error = message;
-    return false;
+    return true;
   }
 
   if (id === ChargeID.Charge2 && (value === q1.value || value === q3.value)) {
     error = message;
-    return false;
+    return true;
   }
 
   if (id === ChargeID.Charge3 && (value === q1.value || value === q2.value)) {
@@ -224,7 +218,7 @@ const isChargeEqualWithOthers = (id: string, value: number): boolean => {
   }
 
   error = "";
-  return true;
+  return false;
 };
 
 const onInputSetCharge = (event: InputEvent) => {
@@ -236,27 +230,17 @@ const onInputSetCharge = (event: InputEvent) => {
     ? new Decimal(chargeInput)
     : new Decimal(0);
 
-  if (!isChargeEqualWithOthers(id, charge.toNumber())) return;
+  if (isChargeEqualWithOthers(id, charge.toNumber())) return;
 
   switch (id) {
     case ChargeID.Charge1:
-      q1.value =
-        charge.equals(q2.value) && charge.equals(q3.value)
-          ? q1.value
-          : charge.toNumber();
-
+      q1.value = charge.toNumber();
       break;
     case ChargeID.Charge2:
-      q2.value =
-        charge.equals(q1.value) && charge.equals(q3.value)
-          ? charge.toNumber()
-          : q2.value;
+      q2.value = charge.toNumber();
       break;
     case ChargeID.Charge3:
-      q3.value =
-        charge.equals(q1.value) && charge.equals(q2.value)
-          ? charge.toNumber()
-          : q3.value;
+      q3.value = charge.toNumber();
       break;
   }
 };
@@ -408,9 +392,10 @@ initData();
     </div>
 
     <div class="result">
-      <p>|F1on2| = |F2on1| = {F1on2}</p>
-      <p>|F1on3| = |F3on1| = {F1on3}</p>
-      <p>|F2on3| = |F3on2| = {F2on3}</p>
+      <p>|F1on2| = |F2on1| = {F1on2} (N)</p>
+      <p>|F1on3| = |F3on1| = {F1on3} (N)</p>
+      <p>|F2on3| = |F3on2| = {F2on3} (N)</p>
+      <p>r12 = {distanceOfTwoPointCharge(q1, q2)} (m)</p>
     </div>
 
     <div class="drawing">
