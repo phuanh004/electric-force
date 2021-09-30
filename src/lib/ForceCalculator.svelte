@@ -1,5 +1,7 @@
 <script lang="ts">
 import { Decimal } from "decimal.js";
+import * as htmlToImage from "html-to-image";
+import { toJpeg, toPng } from "html-to-image";
 
 const COORDINATES_SYSTEM_MAX_LENGTH = 10;
 const SCALE: number = 40;
@@ -7,16 +9,16 @@ let forceScale = 0; // Scale force base on log 2
 
 let q1: Charge, q2: Charge, q3: Charge; // 3 Charges
 
+$: F1on2 = Number(force(q1, q2).F1on2.magnitude).toLocaleString();
+$: F1on3 = Number(force(q1, q3).F1on2.magnitude).toLocaleString();
+$: F2on3 = Number(force(q2, q3).F1on2.magnitude).toLocaleString();
+$: error = "";
+
 enum ChargeID {
   Charge1 = "charge1",
   Charge2 = "charge2",
   Charge3 = "charge3",
 }
-
-$: F1on2 = Number(force(q1, q2).F1on2.magnitude).toLocaleString();
-$: F1on3 = Number(force(q1, q3).F1on2.magnitude).toLocaleString();
-$: F2on3 = Number(force(q2, q3).F1on2.magnitude).toLocaleString();
-$: error = "";
 
 type Point = {
   location: Coordinate;
@@ -63,6 +65,12 @@ const forceMagnitude = (q1: Charge, q2: Charge, r12: number): Decimal => {
   );
 };
 
+/**
+ * Calculate electric force of 2 point charges
+ *
+ * @param q1 charge 1
+ * @param q2 charge 2
+ */
 const force = (
   q1: Charge,
   q2: Charge
@@ -114,12 +122,6 @@ const force = (
       y: F1on2_x2,
     },
   };
-
-  // console.log({
-  //   F1on2,
-  //   F2on1,
-  //   eq,
-  // });
 
   return {
     F1on2: F1on2,
@@ -200,25 +202,44 @@ const vectorOfTwoPoint = (p1: Point, p2: Point): Vector => {
 const isChargeEqualWithOthers = (id: string, value: number): boolean => {
   const message = "q1, q2, and q3 could not be the same";
 
-  console.log({ id, value });
+  const c1 = new Decimal(q1.value);
+  const c2 = new Decimal(q2.value);
+  const c3 = new Decimal(q3.value);
+  const val = new Decimal(value);
 
-  if (id === ChargeID.Charge1 && (value === q2.value || value === q3.value)) {
+  if (id === ChargeID.Charge1 && (val.equals(c2) || val.equals(c3))) {
     error = message;
     return true;
   }
 
-  if (id === ChargeID.Charge2 && (value === q1.value || value === q3.value)) {
+  if (id === ChargeID.Charge2 && (val.equals(c1) || val.equals(c3))) {
     error = message;
     return true;
   }
 
-  if (id === ChargeID.Charge3 && (value === q1.value || value === q2.value)) {
+  if (id === ChargeID.Charge3 && (val.equals(c1) || val.equals(c3))) {
     error = message;
-    return false;
+    return true;
   }
 
   error = "";
   return false;
+};
+
+const isZero = (value: number): boolean => {
+  const message = "q1, q2, and q3 must be not zero";
+
+  if (value === 0) {
+    error = message;
+    return true;
+  }
+
+  error = "";
+  return false;
+};
+
+const isPush = (q1: Charge, q2: Charge): boolean => {
+  return new Decimal(q1.value * q2.value).isPositive();
 };
 
 const onInputSetCharge = (event: InputEvent) => {
@@ -230,6 +251,7 @@ const onInputSetCharge = (event: InputEvent) => {
     ? new Decimal(chargeInput)
     : new Decimal(0);
 
+  if (isZero(charge.toNumber())) return;
   if (isChargeEqualWithOthers(id, charge.toNumber())) return;
 
   switch (id) {
@@ -245,10 +267,6 @@ const onInputSetCharge = (event: InputEvent) => {
   }
 };
 
-// const isChargeEqualWithOthers = (id: string, val: number, o1: Charge, o2: Charge) :boolean {
-
-// }
-
 const colorChargeCSS = (q: Charge): string => {
   return q.value > 0 ? "charge-red" : "charge-blue";
 };
@@ -263,10 +281,6 @@ function cartesianToSVG(x: number, y: number) {
     y: y * SCALE,
   };
 }
-
-const isPush = (q1: Charge, q2: Charge): boolean => {
-  return new Decimal(q1.value * q2.value).isPositive();
-};
 
 const initData = () => {
   q1 = {
@@ -294,12 +308,40 @@ const initData = () => {
   };
 };
 
+/* HELPER */
+const download = () => {
+  htmlToImage.toJpeg(document.body, { quality: 0.95 }).then(function (dataUrl) {
+    var link = document.createElement("a");
+    link.download = "diagram.jpeg";
+    link.href = dataUrl;
+    link.click();
+  });
+};
+function saveAs(uri, filename) {
+  var link = document.createElement("a");
+  if (typeof link.download === "string") {
+    link.href = uri;
+    link.download = filename;
+
+    //Firefox requires the link to be in the body
+    document.body.appendChild(link);
+
+    //simulate click
+    link.click();
+
+    //remove the link when done
+    document.body.removeChild(link);
+  } else {
+    window.open(uri);
+  }
+}
+
 initData();
 </script>
 
 <main>
   <div class="set_input_section">
-    <label for="{ChargeID.Charge1}">Charge 1 (q1): </label>
+    <label for="{ChargeID.Charge1}">q1 (C): </label>
     <input
       id="{ChargeID.Charge1}"
       name="{ChargeID.Charge1}"
@@ -307,11 +349,9 @@ initData();
       placeholder="0.2"
       value="0.2"
       on:input="{onInputSetCharge}" />
-  </div>
 
-  <div class="set_input_section">
-    <span>Charge 1 location: </span>
-    <label for="charge1_location_x">x: </label>
+    <span>Location (m scale): </span>
+    <label for="charge1_location_x">&emsp;x: </label>
     <input
       id="charge1_location_x"
       name="charge1_location_x"
@@ -329,7 +369,7 @@ initData();
   </div>
 
   <div class="set_input_section">
-    <label for="charge2">Charge 2 (q2): </label>
+    <label for="charge2">q2 (C): </label>
     <input
       id="{ChargeID.Charge2}"
       name="{ChargeID.Charge2}"
@@ -337,11 +377,9 @@ initData();
       placeholder="-0.1"
       value="-0.1"
       on:input="{onInputSetCharge}" />
-  </div>
 
-  <div class="set_input_section">
-    <span>Charge 2 location: </span>
-    <label for="charge2_location_x">x: </label>
+    <span>Location (m scale): </span>
+    <label for="charge2_location_x">&emsp;x: </label>
     <input
       id="charge2_location_x"
       name="charge2_location_x"
@@ -358,8 +396,10 @@ initData();
       bind:value="{q2.location.y}" />
   </div>
 
+  <div class="set_input_section"></div>
+
   <div class="set_input_section">
-    <label for="charge3">Charge 3 (q3): </label>
+    <label for="charge3">q3 (C): </label>
     <input
       id="{ChargeID.Charge3}"
       name="{ChargeID.Charge3}"
@@ -367,11 +407,9 @@ initData();
       placeholder="0.3"
       value="0.3"
       on:input="{onInputSetCharge}" />
-  </div>
 
-  <div class="set_input_section">
-    <span>Charge 3 location: </span>
-    <label for="charge3_location_x">x: </label>
+    <span>Location (m scale): </span>
+    <label for="charge3_location_x">&emsp;x: </label>
     <input
       id="charge3_location_x"
       name="charge3_location_x"
@@ -386,19 +424,23 @@ initData();
       type="number"
       placeholder="1"
       bind:value="{q3.location.y}" />
+  </div>
 
-    <div class="error">
-      {error}
-    </div>
+  <div class="error">
+    {error}
+  </div>
 
-    <div class="result">
-      <p>|F1on2| = |F2on1| = {F1on2} (N)</p>
-      <p>|F1on3| = |F3on1| = {F1on3} (N)</p>
-      <p>|F2on3| = |F3on2| = {F2on3} (N)</p>
-      <p>r12 = {distanceOfTwoPointCharge(q1, q2)} (m)</p>
-    </div>
+  <div class="result">
+    <h4>Result:</h4>
+    <p>|F1on2| = |F2on1| = {F1on2} (N)</p>
+    <p>|F1on3| = |F3on1| = {F1on3} (N)</p>
+    <p>|F2on3| = |F3on2| = {F2on3} (N)</p>
+    <p>r12 = {distanceOfTwoPointCharge(q1, q2)} (m)</p>
+    <p>r13 = {distanceOfTwoPointCharge(q1, q3)} (m)</p>
+    <p>r23 = {distanceOfTwoPointCharge(q2, q3)} (m)</p>
 
     <div class="drawing">
+      y
       <svg
         width="100%"
         height="{COORDINATES_SYSTEM_MAX_LENGTH * SCALE}"
@@ -600,12 +642,30 @@ initData();
         <!-- End Charges -->
       </svg>
     </div>
+    <button on:click="{download}">Download photo</button>
   </div>
 </main>
 
 <style>
+html,
+body {
+  background: #fff;
+}
+h4 {
+  @apply text-lg font-bold;
+}
 main {
-  @apply container mx-auto;
+  @apply container mx-auto pt-5;
+
+  background: #fff;
+}
+
+.result {
+  @apply mt-5;
+}
+
+.error {
+  color: red;
 }
 
 .charge-blue {
