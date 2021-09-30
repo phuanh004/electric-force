@@ -191,14 +191,6 @@ const vectorOfTwoPoint = (p1: Point, p2: Point): Vector => {
  * @param q2 charge 2
  * @param q3 charge 3
  */
-// const isDataValid = (q1: number, q2: number, q3: number): boolean => {
-//   if (q1 === 0 || q2 === 0 || q3 === 0) return false;
-
-//   // TODO: Check 2 charges positive and 1 charge negative
-
-//   return q1 !== q2 && q2 !== q3 && q1 !== q3;
-// };
-
 const isChargeEqualWithOthers = (id: string, value: number): boolean => {
   const message = "q1, q2, and q3 could not be the same";
 
@@ -267,10 +259,6 @@ const onInputSetCharge = (event: InputEvent) => {
   }
 };
 
-const colorChargeCSS = (q: Charge): string => {
-  return q.value > 0 ? "charge-red" : "charge-blue";
-};
-
 /**
  * Convert cartesian system to SVG system with the scale
  * @param param0
@@ -309,6 +297,10 @@ const initData = () => {
 };
 
 /* HELPER */
+const colorChargeCSS = (q: Charge): string => {
+  return q.value > 0 ? "charge-red" : "charge-blue";
+};
+
 const download = () => {
   htmlToImage.toJpeg(document.body, { quality: 0.95 }).then(function (dataUrl) {
     var link = document.createElement("a");
