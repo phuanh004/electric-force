@@ -84,13 +84,13 @@ const force = (
   ).toNumber();
 
   let F2on1_x1 = isPush(q1, q2)
-    ? q1.location.x - magnitude_scaled
-    : q1.location.x + magnitude_scaled;
+    ? q1.location.x - magnitude_scaled / Math.sqrt(eq.slope * eq.slope + 1)
+    : q1.location.x + magnitude_scaled / Math.sqrt(eq.slope * eq.slope + 1);
   let F2on1_x2 = eq.slope * F2on1_x1 + eq.y_int;
 
   let F1on2_x1 = isPush(q1, q2)
-    ? q2.location.x + magnitude_scaled
-    : q2.location.x - magnitude_scaled;
+    ? q2.location.x + magnitude_scaled / Math.sqrt(eq.slope * eq.slope + 1)
+    : q2.location.x - magnitude_scaled / Math.sqrt(eq.slope * eq.slope + 1);
   let F1on2_x2 = eq.slope * F1on2_x1 + eq.y_int;
 
   // TODO: scale magnitude
